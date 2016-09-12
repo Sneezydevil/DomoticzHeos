@@ -29,7 +29,7 @@ public:
 	CHEOS(const int ID, const std::string &IPAddress, const int Port, const std::string &User, const std::string &Pwd, const int PollIntervalsec, const int PingTimeoutms);
 	explicit CHEOS(const int ID);
 	~CHEOS(void);
-	void 	AddNode(const std::string &Name);
+	void 	AddNode(const std::string &Name, const std::string &PlayerID);
 	bool 	UpdateNode(const int ID, const std::string &Name);
 	void 	RemoveNode(const int ID);
 	void 	RemoveAllNodes();

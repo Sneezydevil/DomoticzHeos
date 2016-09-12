@@ -91,7 +91,10 @@ void CHEOS::handleMessage(std::string& pMessage)
 								if (root.isMember("payload"))
 								{
 									for( Json::ValueIterator itr = root["payload"].begin() ; itr != root["payload"].end() ; itr++ ) {
-
+										if (root["payload"][itr].isMember("name") && root["payload"][itr].isMember("pid"))
+										{
+											AddNode(root["payload"][itr]["name"], root["payload"][itr]["pid"]);
+										}
 									}
 								}									
 							}
@@ -675,9 +678,28 @@ void CHEOS::UpdateNodeStatus(const LogitechMediaServerNode &Node, const _eMediaS
 	}
 }
 
-void CHEOS::InsertUpdatePlayer(const std::string &Name, const std::string &IPAddress, const std::string &MacAddress)
+void CHEOS::AddNode(const std::string &Name, const std::string &PlayerID)
 {
+	//Check if exists
+	result = m_sql.safe_query("SELECT ID FROM DeviceStatus WHERE (HardwareID==%d) AND (DeviceID=='%q')", m_HwdID, PlayerID.c_str());
+	if (result.size()>0) {
+		int ID = atoi(result[0][0].c_str());
+		UpdateNode(ID, Name);
+		return;
+	}
 
+	m_sql.safe_query(
+		"INSERT INTO DeviceStatus (HardwareID, DeviceID, Unit, Type, SubType, SwitchType, Used, SignalLevel, BatteryLevel, Name, nValue, sValue) "
+		"VALUES (%d, '%q', 1, %d, %d, %d, 1, 12, 255, '%q', 0, 'Unavailable')",
+		m_HwdID, PlayerID.c_str(), int(pTypeLighting2), int(sTypeAC), int(STYPE_Media), Name.c_str());		
+	
+	ReloadNodes();
+}
+
+void CHEOS::UpdateNode(const int ID, const std::string &Name)
+{
+	m_sql.safe_query("UPDATE DeviceStatus SET Name='%q' WHERE (HardwareID==%d) AND (ID=='%d')", Name.c_str(), m_HwdID, ID);	
+	
 	ReloadNodes();
 }
 
