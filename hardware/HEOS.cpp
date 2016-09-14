@@ -95,8 +95,50 @@ void CHEOS::handleMessage(std::string& pMessage)
 										{
 											AddNode(root["payload"][itr]["name"], root["payload"][itr]["pid"]);
 										}
+										else
+										{
+											if (DEBUG_LOGGING) _log.Log(LOG_NORM, "DENON by HEOS: No players found.");
+										}
 									}
-								}									
+								}
+								else
+								{
+									if (DEBUG_LOGGING) _log.Log(LOG_NORM, "DENON by HEOS: No players found (No Payload).");
+								}
+							}
+							else if (root["heos"]["command"] == "player/get_play_state")
+							{
+								if (root["heos"].isMember("message"))
+								{
+									std::vector<std::string> SplitMessage;
+									StringSplit(root["heos"]["message"].asString(), "&", SplitMessage);
+									if (SplitMessage.size() > 0)
+									{
+										std::vector<std::string> SplitMessagePlayer;
+										StringSplit(SplitMessage[0], "=", SplitMessagePlayer);
+										std::vector<std::string> SplitMessageState;
+										StringSplit(SplitMessage[1], "=", SplitMessageState);
+										std::string pid = SplitMessagePlayer[1];
+										std::string state = SplitMessageState[1];										
+									}
+								}
+							}
+							else if (root["heos"]["command"] == "player/set_play_state")
+							{
+								if (root["heos"].isMember("message"))
+								{
+									std::vector<std::string> SplitMessage;
+									StringSplit(root["heos"]["message"].asString(), "&", SplitMessage);
+									if (SplitMessage.size() > 0)
+									{
+										std::vector<std::string> SplitMessagePlayer;
+										StringSplit(SplitMessage[0], "=", SplitMessagePlayer);
+										std::vector<std::string> SplitMessageState;
+										StringSplit(SplitMessage[1], "=", SplitMessageState);
+										std::string pid = SplitMessagePlayer[1];
+										std::string state = SplitMessageState[1];										
+									}
+								}
 							}
 						}
 					}
@@ -751,12 +793,11 @@ void CHEOS::ReloadNodes()
 	}	
 }
 
-/*
 
 //Webserver helpers
 namespace http {
 	namespace server {
-		void CWebServer::Cmd_LMSSetMode(WebEmSession & session, const request& req, Json::Value &root)
+		void CWebServer::Cmd_HEOSSetMode(WebEmSession & session, const request& req, Json::Value &root)
 		{
 			if (session.rights != 2)
 			{
@@ -776,12 +817,12 @@ namespace http {
 			CDomoticzHardwareBase *pBaseHardware = m_mainworker.GetHardware(iHardwareID);
 			if (pBaseHardware == NULL)
 				return;
-			if (pBaseHardware->HwdType != HTYPE_LogitechMediaServer)
+			if (pBaseHardware->HwdType != HTYPE_HEOS)
 				return;
 			CHEOS *pHardware = reinterpret_cast<CHEOS*>(pBaseHardware);
 
 			root["status"] = "OK";
-			root["title"] = "LMSSetMode";
+			root["title"] = "HEOSSetMode";
 
 			int iMode1 = atoi(mode1.c_str());
 			int iMode2 = atoi(mode2.c_str());
@@ -791,41 +832,7 @@ namespace http {
 			pHardware->Restart();
 		}
 
-		void CWebServer::Cmd_LMSGetNodes(WebEmSession & session, const request& req, Json::Value &root)
-		{
-			if (session.rights != 2)
-				return;//Only admin user allowed
-			std::string hwid = request::findValue(&req, "idx");
-			if (hwid == "")
-				return;
-			int iHardwareID = atoi(hwid.c_str());
-			CDomoticzHardwareBase *pHardware = m_mainworker.GetHardware(iHardwareID);
-			if (pHardware == NULL)
-				return;
-			if (pHardware->HwdType != HTYPE_LogitechMediaServer)
-				return;
-
-			root["status"] = "OK";
-			root["title"] = "LMSGetNodes";
-
-			std::vector<std::vector<std::string> > result;
-			result = m_sql.safe_query("SELECT ID,Name,MacAddress FROM WOLNodes WHERE (HardwareID==%d)", iHardwareID);
-			if (result.size() > 0)
-			{
-				std::vector<std::vector<std::string> >::const_iterator itt;
-				int ii = 0;
-				for (itt = result.begin(); itt != result.end(); ++itt)
-				{
-					std::vector<std::string> sd = *itt;
-
-					root["result"][ii]["idx"] = sd[0];
-					root["result"][ii]["Name"] = sd[1];
-					root["result"][ii]["Mac"] = sd[2];
-					ii++;
-				}
-			}
-		}
-
+		/*
 		void CWebServer::Cmd_LMSGetPlaylists(WebEmSession & session, const request& req, Json::Value &root)
 		{
 			std::string hwid = request::findValue(&req, "idx");
@@ -853,8 +860,9 @@ namespace http {
 				ii++;
 			}
 		}
-
-		void CWebServer::Cmd_LMSMediaCommand(WebEmSession & session, const request& req, Json::Value &root)
+		*/
+		
+		void CWebServer::Cmd_HEOSMediaCommand(WebEmSession & session, const request& req, Json::Value &root)
 		{
 			std::string sIdx = request::findValue(&req, "idx");
 			std::string sAction = request::findValue(&req, "action");
@@ -862,7 +870,7 @@ namespace http {
 				return;
 			int idx = atoi(sIdx.c_str());
 			root["status"] = "OK";
-			root["title"] = "LMSMediaCommand";
+			root["title"] = "HEOSMediaCommand";
 
 			std::vector<std::vector<std::string> > result;
 			result = m_sql.safe_query("SELECT DS.SwitchType, H.Type, H.ID FROM DeviceStatus DS, Hardware H WHERE (DS.ID=='%q') AND (DS.HardwareID == H.ID)", sIdx.c_str());
@@ -875,9 +883,9 @@ namespace http {
 				if (sType == STYPE_Media)
 				{
 					switch (hType) {
-					case HTYPE_LogitechMediaServer:
-						CHEOS LMS(HwID);
-						LMS.SendCommand(idx, sAction);
+					case HTYPE_HEOS:
+						CHEOS HEOS(HwID);
+						HEOS.SendCommand(idx, sAction);
 						break;
 						// put other players here ...
 					}
@@ -887,4 +895,3 @@ namespace http {
 
 	}
 }
-*/
